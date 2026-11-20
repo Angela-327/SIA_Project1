@@ -13,7 +13,7 @@
   const CFG = window.APP_CONFIG || {};
   const app = document.getElementById("app");
   const POLL_MS = 5000;
-  const SILENT_MS = 3 * 60 * 1000; // an exam in progress with no sign of life for 3 minutes is flagged
+  const SILENT_MS = 3 * 60 * 1000; // a certification in progress with no sign of life for 3 minutes is flagged
 
   /* ----------------------------------------------------------------- helpers */
 
@@ -211,19 +211,19 @@
 
   const examFields = (e = {}) => `
     <label>Title<input id="f-title" type="text" maxlength="120" value="${esc(e.title || "")}" placeholder="Fortinet NSE 1 certification"></label>
-    <label>Website to monitor <small>(the exam site)</small>
+    <label>Website to monitor <small>(the certification site)</small>
       <input id="f-site" type="text" value="${esc(e.site_url || "")}" placeholder="https://training.fortinet.com"></label>
     <div class="grid">
       <label>Strikes before lock<input id="f-strikes" type="number" min="1" max="10" value="${esc(e.max_strikes ?? 5)}"></label>
       <label>Lockout hours <small>(0 = until I unlock)</small><input id="f-hours" type="number" min="0" max="720" value="${esc(e.lockout_hours ?? 24)}"></label>
     </div>
-    <label class="check"><input id="f-copy" type="checkbox" ${e.block_copy_paste === false ? "" : "checked"}> Block copy, paste and right-click during the exam</label>`;
+    <label class="check"><input id="f-copy" type="checkbox" ${e.block_copy_paste === false ? "" : "checked"}> Block copy, paste and right-click during the certification</label>`;
 
   function readExamFields() {
     const site = normalizeSite($("#f-site").value);
     const title = $("#f-title").value.trim();
     if (!title) throw new Error("Enter a title.");
-    if (!site) throw new Error("Enter the exam website, for example https://training.fortinet.com");
+    if (!site) throw new Error("Enter the certification website, for example https://training.fortinet.com");
     return {
       title, site_url: site,
       max_strikes: Math.min(10, Math.max(1, parseInt($("#f-strikes").value, 10) || 5)),
@@ -236,11 +236,11 @@
     shell(`<p class="muted">Loading...</p>`);
     const exams = await rest("exams?select=id,title,site_url,join_code,status,max_strikes,created_at&order=created_at.desc");
     shell(`
-      <div class="row between"><div><h1>Your exams</h1><p class="muted">Create an exam, go live, and give students the join code.</p></div></div>
+      <div class="row between"><div><h1>Your certifications</h1><p class="muted">Create a certification, go live, and give students the join code.</p></div></div>
       <details class="card" ${exams.length ? "" : "open"}>
-        <summary>+ New exam</summary><div style="margin-top:14px">
+        <summary>+ New certification</summary><div style="margin-top:14px">
           ${examFields()}
-          <button class="btn" id="create">Create exam</button>
+          <button class="btn" id="create">Create certification</button>
           <p class="msg" id="msg"></p>
         </div>
       </details>
@@ -251,7 +251,7 @@
           <td><span class="badge ${esc(e.status)}">${esc(e.status)}</span></td>
           <td><code>${esc(e.join_code)}</code></td>
           <td class="actions"><a class="btn small secondary" style="text-decoration:none" href="#/exam/${esc(e.id)}">Open</a></td></tr>`).join("")}
-        </tbody></table></div>` : `<div class="card empty">No exams yet. Create your first one above.</div>`}`);
+        </tbody></table></div>` : `<div class="card empty">No certifications yet. Create your first one above.</div>`}`);
 
     $("#create").addEventListener("click", async () => {
       const msg = $("#msg");
@@ -277,15 +277,15 @@
   async function viewExam(id) {
     shell(`<p class="muted">Loading...</p>`);
     const found = await rest(`exams?id=eq.${encodeURIComponent(id)}&select=*`);
-    if (!found.length) return shell(`<div class="card"><h1>Exam not found</h1><p><a href="#/">Back to your exams</a></p></div>`);
+    if (!found.length) return shell(`<div class="card"><h1>Certification not found</h1><p><a href="#/">Back to your certifications</a></p></div>`);
     let exam = found[0];
     let attempts = [];
     let busy = false;
 
     shell(`
-      <p><a href="#/" class="muted">&larr; All exams</a></p>
+      <p><a href="#/" class="muted">&larr; All certifications</a></p>
       <div id="head"></div>
-      <details class="card"><summary>Exam settings</summary><div style="margin-top:14px">
+      <details class="card"><summary>Certification settings</summary><div style="margin-top:14px">
         <div id="settings">${examFields(exam)}</div>
         <button class="btn" id="save">Save settings</button><p class="msg" id="save-msg"></p>
       </div></details>
@@ -293,7 +293,7 @@
       <div class="card" id="monitor"></div>`);
 
     function renderHead() {
-      const next = { draft: ["Go live", "ok", "live"], live: ["End exam", "danger", "ended"], ended: ["Reopen", "secondary", "live"] }[exam.status];
+      const next = { draft: ["Go live", "ok", "live"], live: ["End certification", "danger", "ended"], ended: ["Reopen", "secondary", "live"] }[exam.status];
       $("#head").innerHTML = `
         <div class="card">
           <div class="row between">
@@ -308,8 +308,8 @@
           <p class="note" style="margin-top:10px">${exam.status === "live"
             ? "Students: install the extension, click its icon, then enter this join code and your full name."
             : exam.status === "draft"
-              ? "Students cannot join yet. Press Go live when the exam starts."
-              : "This exam has ended. Students are no longer monitored."}</p>
+              ? "Students cannot join yet. Press Go live when the certification starts."
+              : "This certification has ended. Students are no longer monitored."}</p>
         </div>`;
       $("#copy-code").addEventListener("click", async (ev) => {
         try { await navigator.clipboard.writeText(exam.join_code); ev.target.textContent = "Copied"; } catch { ev.target.textContent = "Select and copy"; }
@@ -317,7 +317,7 @@
       $("#status-btn").addEventListener("click", async () => {
         if (exam.status === "live") {
           const n = attempts.filter((a) => a.status === "in_progress").length;
-          if (!confirm(n ? `${n} student(s) are still working. End the exam anyway?` : "End this exam? Students stop being monitored.")) return;
+          if (!confirm(n ? `${n} student(s) are still working. End the certification anyway?` : "End this certification? Students stop being monitored.")) return;
         }
         try {
           const rows = await rest(`exams?id=eq.${encodeURIComponent(exam.id)}`, { method: "PATCH", body: { status: next[2] }, prefer: "return=representation" });
@@ -352,7 +352,7 @@
               <td><span class="pips">${pips}</span> <span class="note">${a.strikes}/${exam.max_strikes}</span></td>
               <td><span class="score ${band(a.score)}">${a.score}</span></td>
               <td>${esc(ago(a.last_violation_at))}</td>
-              <td>${esc(ago(a.last_seen))}${silent ? ` <span class="flag" title="No sign of life during the exam">&#9888; silent</span>` : ""}</td>
+              <td>${esc(ago(a.last_seen))}${silent ? ` <span class="flag" title="No sign of life during the certification">&#9888; silent</span>` : ""}</td>
               <td class="actions">
                 ${a.status === "locked" ? `<button class="btn small ok" data-act="unlock" data-id="${esc(a.id)}">Unlock</button>` : ""}
                 <button class="btn small secondary" data-act="timeline" data-id="${esc(a.id)}">Timeline</button>
@@ -361,7 +361,7 @@
               </td></tr>`;
           }).join("")}</tbody></table></div>
           <p class="note" style="margin-top:10px">Score = 100 &minus; 15 per strike &minus; 2 per blocked copy/paste (max 10). 85+ fine, 60&ndash;84 worth a look, below 60 needs review. It is a prompt to review, not a verdict.</p>`
-          : `<div class="empty">No students yet. Share the join code once the exam is live.</div>`}`;
+          : `<div class="empty">No students yet. Share the join code once the certification is live.</div>`}`;
 
       $("#csv-attempts").addEventListener("click", () => downloadCsv(
         `${exam.title}-attempts.csv`,
